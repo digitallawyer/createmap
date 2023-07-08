@@ -14,9 +14,7 @@
             height: 96vh;
             width: 100%;
         }
-        #downloadDropdown {
-            display: none;
-        }
+
 
     </style>
 </head>
@@ -123,6 +121,10 @@ function downloadData(format) {
 }
 
 window.onload = function() {
+    // Disable the dropdown items initially
+    const resultOptions = document.querySelectorAll('.result-option');
+    resultOptions.forEach(option => option.classList.add('disabled'));
+
     initMap();
 
     document.getElementById('mapType').addEventListener('change', function() {
@@ -188,8 +190,8 @@ window.onload = function() {
                                 origin: { y: 0.6 }
                             });
 
-                            // Show the "Results" button
-                            document.getElementById('downloadDropdown').style.display = 'block';
+                            // Enable the dropdown items
+                            resultOptions.forEach(option => option.classList.remove('disabled'));
 
                             // Delay the triggering of the results modal by 3 seconds
                             setTimeout(function() {
@@ -260,7 +262,7 @@ window.onload = function() {
         });
         markers = []; // Clear the markers array
         markerCluster.clearMarkers(); // Clear the marker cluster
-        document.getElementById('downloadDropdown').style.display = 'none'; // Hide the "Results" button
+        resultOptions.forEach(option => option.classList.add('disabled'));
     });
 
     document.getElementById('downloadJsonModal').addEventListener('click', function() {
@@ -295,7 +297,7 @@ window.onload = function() {
             console.error('Could not copy text: ', err);
         });
     }
-    
+
     document.getElementById('copyClipboard').addEventListener('click', function() {
         copyToClipboard(tableToString());
         this.textContent = 'Copied to clipboard';
@@ -316,15 +318,15 @@ window.onload = function() {
         <a class="navbar-brand" href="#">CreateMap.app</a>
         <div class="d-flex">
             <div class="dropdown">
-                <button class="btn btn-secondary dropdown-toggle" type="button" id="downloadDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    Results
+                <button class="btn dropdown-toggle" type="button" id="downloadDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    View Results
                 </button>
                 <ul class="dropdown-menu" aria-labelledby="downloadDropdown">
-                    <li><a class="dropdown-item" id="downloadJson" href="#">Download as JSON</a></li>
-                    <li><a class="dropdown-item" id="downloadCsv" href="#">Download as CSV</a></li>
-                    <li><a class="dropdown-item" id="copyClipboard" href="#">Copy to Clipboard</a></li>
-                    <li><a class="dropdown-item" id="viewResults" href="#" data-bs-toggle="modal" data-bs-target="#resultsModal">View Results</a></li>
-                    <li><a class="dropdown-item" id="clearResults" href="#">Clear Results</a></li>
+                    <li><a class="dropdown-item result-option" id="downloadJson" href="#">Download as JSON</a></li>
+                    <li><a class="dropdown-item result-option" id="downloadCsv" href="#">Download as CSV</a></li>
+                    <li><a class="dropdown-item result-option" id="copyClipboard" href="#">Copy to Clipboard</a></li>
+                    <li><a class="dropdown-item result-option" id="viewResults" href="#" data-bs-toggle="modal" data-bs-target="#resultsModal">View Results</a></li>
+                    <li><a class="dropdown-item result-option" id="clearResults" href="#">Clear Results</a></li>
                 </ul>
             </div>
             <button class="btn btn-primary ms-2" data-bs-toggle="modal" data-bs-target="#locationModal">Add Locations</button>
