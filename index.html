@@ -121,6 +121,9 @@ function downloadData(format) {
 }
 
 window.onload = function() {
+
+    loadResultsFromLocalStorage();
+
     // Disable the dropdown items initially
     const resultOptions = document.querySelectorAll('.result-option');
     resultOptions.forEach(option => option.classList.add('disabled'));
@@ -182,6 +185,10 @@ window.onload = function() {
                             // Populate the results table
                             populateResultsTable();
 
+                            // Save the results to the local storage
+                            saveResultsToLocalStorage();
+
+
                             // Trigger confetti
                             const confetti = window.confetti;
                             confetti({
@@ -203,7 +210,7 @@ window.onload = function() {
                     .catch(error => console.error(error));
             }, delay);
 
-            delay += 10;
+            delay += 500;
         });
 
         markerCluster.redraw();
@@ -263,6 +270,7 @@ window.onload = function() {
         markers = []; // Clear the markers array
         markerCluster.clearMarkers(); // Clear the marker cluster
         resultOptions.forEach(option => option.classList.add('disabled'));
+        localStorage.removeItem('mapData');
     });
 
     document.getElementById('downloadJsonModal').addEventListener('click', function() {
@@ -280,6 +288,7 @@ window.onload = function() {
         markers = []; // Clear the markers array
         markerCluster.clearMarkers(); // Clear the marker cluster
         document.getElementById('downloadDropdown').style.display = 'none'; // Hide the "Results" button
+        localStorage.removeItem('mapData');
     });
 
     function tableToString() {
@@ -310,6 +319,43 @@ window.onload = function() {
         setTimeout(() => this.textContent = 'Copy to Clipboard', 3000);
     });
 
+    function saveResultsToLocalStorage() {
+        const data = markers.map(marker => ({
+            userInput: marker.userInput,
+            lat: marker.getPosition().lat(),
+            lng: marker.getPosition().lng()
+        }));
+        localStorage.setItem('mapData', JSON.stringify(data));
+    }
+    
+    function loadResultsFromLocalStorage() {
+        const data = JSON.parse(localStorage.getItem('mapData'));
+        if (data) {
+            data.forEach(item => {
+                const marker = new google.maps.Marker({
+                    position: new google.maps.LatLng(item.lat, item.lng),
+                    icon: {
+                        url: `http://maps.google.com/mapfiles/ms/icons/${markerColor}-dot.png`
+                    },
+                    userInput: item.userInput
+                });
+
+                const infowindow = new google.maps.InfoWindow({
+                    content: `<p><b>${item.userInput}</b></p><p>Latitude: ${item.lat}</p><p>Longitude: ${item.lng}</p>`
+                });
+
+                marker.addListener('click', function() {
+                    infowindow.open(map, marker);
+                });
+
+                markers.push(marker);
+                markerCluster.addMarker(marker, false);
+
+                bounds.extend(marker.position);
+                map.fitBounds(bounds);
+            });
+        }
+    }
 };
 
 </script>
