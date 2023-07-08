@@ -121,9 +121,6 @@ function downloadData(format) {
 }
 
 window.onload = function() {
-
-    loadResultsFromLocalStorage();
-
     // Disable the dropdown items initially
     const resultOptions = document.querySelectorAll('.result-option');
     resultOptions.forEach(option => option.classList.add('disabled'));
@@ -185,10 +182,6 @@ window.onload = function() {
                             // Populate the results table
                             populateResultsTable();
 
-                            // Save the results to the local storage
-                            saveResultsToLocalStorage();
-
-
                             // Trigger confetti
                             const confetti = window.confetti;
                             confetti({
@@ -210,7 +203,7 @@ window.onload = function() {
                     .catch(error => console.error(error));
             }, delay);
 
-            delay += 500;
+            delay += 10;
         });
 
         markerCluster.redraw();
@@ -263,16 +256,6 @@ window.onload = function() {
         $('#settingsModal').modal('hide');
     });
 
-    document.getElementById('clearResults').addEventListener('click', function() {
-        markers.forEach(marker => {
-            marker.setMap(null); // Remove the marker from the map
-        });
-        markers = []; // Clear the markers array
-        markerCluster.clearMarkers(); // Clear the marker cluster
-        resultOptions.forEach(option => option.classList.add('disabled'));
-        localStorage.removeItem('mapData');
-    });
-
     document.getElementById('downloadJsonModal').addEventListener('click', function() {
         downloadData('json');
     });
@@ -281,16 +264,37 @@ window.onload = function() {
         downloadData('csv');
     });
 
-    document.getElementById('clearResultsModal').addEventListener('click', function() {
-        markers.forEach(marker => {
-            marker.setMap(null); // Remove the marker from the map
-        });
-        markers = []; // Clear the markers array
-        markerCluster.clearMarkers(); // Clear the marker cluster
-        document.getElementById('downloadDropdown').style.display = 'none'; // Hide the "Results" button
-        localStorage.removeItem('mapData');
+    document.getElementById('clearResults').addEventListener('click', function() {
+        if (confirm('Are you sure you want to clear all results? This action cannot be undone.')) {
+            markers.forEach(marker => {
+                marker.setMap(null); // Remove the marker from the map
+            });
+            markers = []; // Clear the markers array
+            markerCluster.clearMarkers(); // Clear the marker cluster
+            resultOptions.forEach(option => option.classList.add('disabled'));
+            resultsTableBody.innerHTML = '';
+            // Reset the progress bar
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = '0%';
+            progressBar.setAttribute('aria-valuenow', 0);
+        }
     });
 
+    document.getElementById('clearResultsModal').addEventListener('click', function() {
+        if (confirm('Are you sure you want to clear all results? This action cannot be undone.')) {
+            markers.forEach(marker => {
+                marker.setMap(null); // Remove the marker from the map
+            });
+            markers = []; // Clear the markers array
+            markerCluster.clearMarkers(); // Clear the marker cluster
+            resultOptions.forEach(option => option.classList.add('disabled'));
+            resultsTableBody.innerHTML = '';
+            // Reset the progress bar
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = '0%';
+            progressBar.setAttribute('aria-valuenow', 0);
+        }
+    });
     function tableToString() {
         const rows = Array.from(document.querySelectorAll('#resultsTableBody tr'));
         return rows.map(row => {
@@ -319,43 +323,6 @@ window.onload = function() {
         setTimeout(() => this.textContent = 'Copy to Clipboard', 3000);
     });
 
-    function saveResultsToLocalStorage() {
-        const data = markers.map(marker => ({
-            userInput: marker.userInput,
-            lat: marker.getPosition().lat(),
-            lng: marker.getPosition().lng()
-        }));
-        localStorage.setItem('mapData', JSON.stringify(data));
-    }
-    
-    function loadResultsFromLocalStorage() {
-        const data = JSON.parse(localStorage.getItem('mapData'));
-        if (data) {
-            data.forEach(item => {
-                const marker = new google.maps.Marker({
-                    position: new google.maps.LatLng(item.lat, item.lng),
-                    icon: {
-                        url: `http://maps.google.com/mapfiles/ms/icons/${markerColor}-dot.png`
-                    },
-                    userInput: item.userInput
-                });
-
-                const infowindow = new google.maps.InfoWindow({
-                    content: `<p><b>${item.userInput}</b></p><p>Latitude: ${item.lat}</p><p>Longitude: ${item.lng}</p>`
-                });
-
-                marker.addListener('click', function() {
-                    infowindow.open(map, marker);
-                });
-
-                markers.push(marker);
-                markerCluster.addMarker(marker, false);
-
-                bounds.extend(marker.position);
-                map.fitBounds(bounds);
-            });
-        }
-    }
 };
 
 </script>
