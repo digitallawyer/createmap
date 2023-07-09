@@ -25,6 +25,7 @@
                     <select id="selectButton" class="form-select w-auto me-2">
                             <option value="3d1">3D Scatter: Revenue vs. Lawyers vs. Profit Per Partner</option>
                             <option value="3d2">3D Scatter: Revenue vs. Revenue Per Lawyer vs. Profit Per Partner</option>
+                            <option value="2d3">2D Scatter: Revenue vs. Lawyers</option>
                             <option value="2d1">2D Scatter: Revenue vs. Profit Per Partner</option>
                             <option value="2d2">2D Scatter: Revenue Per Lawyer vs. Profit Per Partner</option>
                             <option value="3d">3D Scatter: Revenue vs. Lawyers vs. Revenue Per Lawyer</option>
@@ -132,6 +133,8 @@ fetch('firms_data_ppp.json')
             // Create the traces and layout for each plot
             var trace3d1 = create3DTrace(filteredData.map(item => item['Revenue']), lawyers, filteredData.map(item => item['ProfitPerPartner']), normalizedProfitPerPartner, 'Profit Per Partner', filteredData.map(item => item['Firm']));  // Pass filteredData firms as text
             var trace3d2 = create3DTrace(filteredData.map(item => item['Revenue']), filteredData.map(item => item['RevenuePerLawyer']), filteredData.map(item => item['ProfitPerPartner']), normalizedProfitPerPartner, 'Profit Per Partner', filteredData.map(item => item['Firm']));  // Pass filteredData firms as text
+            var trace2d3 = create2DTrace(filteredData.map(item => item['Revenue']), lawyers, 'Revenue vs. Lawyers', filteredData.map(item => item['Firm']));  // Pass filteredData firms as text
+
             var trace2d1 = create2DTrace(filteredData.map(item => item['Revenue']), filteredData.map(item => item['ProfitPerPartner']), 'Revenue vs. Profit Per Partner', filteredData.map(item => item['Firm']));  // Pass filteredData firms as text
             var trace2d2 = create2DTrace(filteredData.map(item => item['RevenuePerLawyer']), filteredData.map(item => item['ProfitPerPartner']), 'Revenue Per Lawyer vs. Profit Per Partner', filteredData.map(item => item['Firm']));  // Pass filteredData firms as text
             var trace3d = create3DTrace(filteredData.map(item => item['Revenue']), lawyers, filteredData.map(item => item['RevenuePerLawyer']), normalizedRevPerLawyer, 'Revenue Per Lawyer', filteredData.map(item => item['Firm']));  // Pass filteredData firms as text
@@ -180,6 +183,12 @@ fetch('firms_data_ppp.json')
                 'Total Revenue',
                 'Total Lawyers',
                 'Profit Per Partner'
+            );
+            var layout2D3 = createLayout(
+                '',
+                'This plot shows the relationship between total revenue and the number of lawyers in a firm.',
+                'Revenue',
+                'Number of Lawyers'
             );
 
             var layout3D2 = createLayout(
@@ -230,6 +239,7 @@ fetch('firms_data_ppp.json')
             var traces = {
                 "3d1": {data: [trace3d1], layout: layout3D1},
                 "3d2": {data: [trace3d2], layout: layout3D2},
+                "2d3": {data: [trace2d3], layout: layout2D3},
                 "2d1": {data: [trace2d1], layout: layout2D1},
                 "2d2": {data: [trace2d2], layout: layout2D2},
                 "3d": {data: [trace3d], layout: layout3D},
@@ -250,6 +260,15 @@ fetch('firms_data_ppp.json')
             selectDropdown.addEventListener('change', function() {
                 var selectedOption = selectDropdown.options[selectDropdown.selectedIndex].value;
 
+                // Reset the search bar
+                searchBar.value = "";
+                
+                // Reset the color of all the results
+                currentData = originalData.map(item => {
+                    item.color = 'blue';  // Change this to the default color of your data points
+                    return item;
+                });
+
                 // Initialize the title and description
                 let title = "The Triad of Law Firm Prosperity: Revenue, Lawyers, and Profit Per Partner";
                 let description = "This plot shows the relationship between revenue, number of lawyers, and profit per partner.";
@@ -262,6 +281,10 @@ fetch('firms_data_ppp.json')
                     case "3d2":
                         title = "The Power of Individual Performance: Revenue, Revenue Per Lawyer, and Profit Per Partner";
                         description = "This plot shows the relationship between revenue, revenue per lawyer, and profit per partner. It delves into the heart of what it means to run a profitable law firm. It beautifully illustrates the significant impact of a lawyer's individual contribution (revenue per lawyer) on the overall profit per partner. This plot underscores the value of efficiency and effectiveness in a lawyer's work, as these traits appear to be key drivers of a firm's profitability.";
+                        break;
+                    case "2d3":
+                        title = "The Balance of Growth: Total Revenue vs. Number of Lawyers";
+                        description = "This plot shows the relationship between total revenue and the number of lawyers in a firm. It allows us to analyze how the size of a law firm's team correlates with its total revenue.";
                         break;
                     case "2d1":
                         title = "The Balance of Wealth: Total Revenue vs. Profit Per Partner";
