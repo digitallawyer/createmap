@@ -2,81 +2,368 @@
 <html>
 <head>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.0.1/css/bootstrap.min.css" integrity="sha512-Ez0cGzNzHR1tYAv56860NLspgUGuQw16GiOOp/I2LuTmpSK9xDXlgJz3XN4cnpXWDmkNBKXR/VDMTCnAaEooxA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
-        /* Make the plot take up the entire page */
-        body, html, #myDiv {
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
+        /* Make the plot take up most of the page */
+        #myDiv {
+            height: 70vh;
         }
+
     </style>
 </head>
 <body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12 mt-3">
+                <div id="description" class="mt-2">
+                    <!-- Initialize the title and description with the values for the "3d1" case -->
+                    <h3 id="plotTitle">The Triad of Law Firm Prosperity: Revenue, Lawyers, and Profit Per Partner</h3>
+                    <p id="plotDescription">This plot shows the relationship between revenue, number of lawyers, and profit per partner. It offers a fascinating glimpse into the intricate dynamics of a law firm's financial health. It showcases the interplay between a firm's total revenue, the size of its legal team, and the profit reaped by each partner. While a bigger team and greater revenue might intuitively seem to promise higher profits, the reality, as depicted by this plot, is a bit more complex. Other factors, possibly such as the firm's operational efficiency, geographical location, or specialization, might also be influencing the profit per partner.</p>
+                </div>
 
-<div id="myDiv"></div>
+                <div id="dropdowns" class="d-flex justify-content-start">
+                    <select id="selectButton" class="form-select w-auto me-2">
+                            <option value="3d1">3D Scatter: Revenue vs. Lawyers vs. Profit Per Partner</option>
+                            <option value="3d2">3D Scatter: Revenue vs. Revenue Per Lawyer vs. Profit Per Partner</option>
+                            <option value="2d1">2D Scatter: Revenue vs. Profit Per Partner</option>
+                            <option value="2d2">2D Scatter: Revenue Per Lawyer vs. Profit Per Partner</option>
+                            <option value="3d">3D Scatter: Revenue vs. Lawyers vs. Revenue Per Lawyer</option>
+                            <option value="rev">2D Scatter: Revenue vs. Revenue Per Lawyer</option>
+                            <option value="law">2D Scatter: Lawyers vs. Revenue Per Lawyer</option>
+                    </select>
+                    <select id="selectData" class="form-select w-auto me-2">
+                            <option value="all">All Firms</option>
+                            <option value="top10">Top 10 Firms</option>
+                            <option value="top25">Top 25 Firms</option>
+                            <option value="top50">Top 50 Firms</option>
+                            <option value="bottom10">Bottom 10 Firms</option>
+                            <option value="bottom25">Bottom 25 Firms</option>
+                            <option value="bottom50">Bottom 50 Firms</option>
+                    </select>
+                    <input type="text" id="searchBar" class="form-control w-auto me-2" placeholder="Search for a firm">
+                </div>
+                <div id="myDiv" class="mt-2"></div>
+
+            </div>
+        </div>
+    </div>
 
 <script>
 // Load the data from the JSON file
-fetch('firms_data.json')
+fetch('firms_data_ppp.json')
     .then(response => response.json())
     .then(data => {
-        // Create the trace for the 3D scatter plot
-        var trace = {
-            x: data['Revenue'],
-            y: data['Lawyers'],
-            z: data['RevenuePerLawyer'],
-            marker: {
-                color: data['RevenuePerLawyer'],  // Color based on revenue per lawyer
-                colorscale: [[0, 'lightblue'], [1, 'navy']],
-                opacity: 0.8,
-                size: data['RevenuePerLawyer'],  // Size based on revenue per lawyer
-                sizemode: 'diameter',  // Size represents the diameter of the marker
-                sizeref: 20000,  // Adjust the scale of the marker size
-                colorbar: {
-                    title: { text: 'Revenue Per Lawyer' },
-                    x: -0.1
+        // Initialize with all data
+        var currentData = data;
+        var originalData = data;
+
+
+ 
+        // Function to create plots
+        function createPlots(filteredData, searchText) {
+            // Compute color attribute based on whether firm name includes the search text
+
+            var colorAttribute = filteredData.map(item => 
+                    (searchText === '' || !item['Firm'].toLowerCase().includes(searchText)) ? 'blue' : 'orange'
+                );
+
+
+           // Function to create 3D traces
+            function create3DTrace(x, y, z, color, name, text) {
+                return {
+                    x: x,
+                    y: y,
+                    z: z,
+                    marker: {
+                        color: colorAttribute,  // Use colorAttribute here
+                        colorscale: [[0, 'lightblue'], [1, 'navy']],
+                        opacity: 0.8,
+                        size: color,
+                        sizemode: 'diameter',
+                        sizeref: 0.01,
+                        colorbar: {
+                            title: { text: name },
+                            x: -0.1
+                        }
+                    },
+                    mode: 'markers',
+                    name: 'Top 100 Law Firms (Darker color & bigger size = higher ' + name + ')',
+                    type: 'scatter3d',
+                    hovertemplate:
+                        '<b>%{text}</b><br>' +
+                        'Total Revenue: %{x}<br>' +
+                        'Total Lawyers: %{y}<br>' +
+                        name + ': %{z}<br>' +
+                        '<extra></extra>',
+                    text: text  // Use text parameter here
+                };
+            }
+
+            // Function to create 2D traces
+            function create2DTrace(x, y, name, text) {
+                return {
+                    x: x,
+                    y: y,
+                    mode: 'markers',
+                    marker: { size: 15, color: colorAttribute },
+                    type: 'scatter',
+                    name: 'Top 100 Law Firms: ' + name,
+                    hovertemplate: '<b>%{text}</b><br>' +
+                        'Total Revenue: %{x}<br>' +
+                        name + ': %{y}<br>' +
+                        '<extra></extra>',
+                    text: text  // Use text parameter here
+                };
+            }
+
+            // Convert 'Lawyers' field to a number
+            var lawyers = filteredData.map(item => Number(item['Lawyers'].replace(/,/g, '')));
+
+            // Use filteredData instead of data
+            var minRevPerLawyer = 95000;
+            var maxRevPerLawyer = 3860000;
+            var normalizedRevPerLawyer = filteredData.map(item => (item['RevenuePerLawyer'] - minRevPerLawyer) / (maxRevPerLawyer - minRevPerLawyer));
+
+            // Normalize "Profit Per Partner" and "RevenuePerLawyer" with zero check
+            var minProfitPerPartner = Math.min(...filteredData.map(item => item['ProfitPerPartner']));
+            var maxProfitPerPartner = Math.max(...filteredData.map(item => item['ProfitPerPartner']));
+            var normalizedProfitPerPartner = filteredData.map(item => maxProfitPerPartner !== minProfitPerPartner ? (item['ProfitPerPartner'] - minProfitPerPartner) / (maxProfitPerPartner - minProfitPerPartner) : 0);
+
+            // Create the traces and layout for each plot
+            var trace3d1 = create3DTrace(filteredData.map(item => item['Revenue']), lawyers, filteredData.map(item => item['ProfitPerPartner']), normalizedProfitPerPartner, 'Profit Per Partner', filteredData.map(item => item['Firm']));  // Pass filteredData firms as text
+            var trace3d2 = create3DTrace(filteredData.map(item => item['Revenue']), filteredData.map(item => item['RevenuePerLawyer']), filteredData.map(item => item['ProfitPerPartner']), normalizedProfitPerPartner, 'Profit Per Partner', filteredData.map(item => item['Firm']));  // Pass filteredData firms as text
+            var trace2d1 = create2DTrace(filteredData.map(item => item['Revenue']), filteredData.map(item => item['ProfitPerPartner']), 'Revenue vs. Profit Per Partner', filteredData.map(item => item['Firm']));  // Pass filteredData firms as text
+            var trace2d2 = create2DTrace(filteredData.map(item => item['RevenuePerLawyer']), filteredData.map(item => item['ProfitPerPartner']), 'Revenue Per Lawyer vs. Profit Per Partner', filteredData.map(item => item['Firm']));  // Pass filteredData firms as text
+            var trace3d = create3DTrace(filteredData.map(item => item['Revenue']), lawyers, filteredData.map(item => item['RevenuePerLawyer']), normalizedRevPerLawyer, 'Revenue Per Lawyer', filteredData.map(item => item['Firm']));  // Pass filteredData firms as text
+            var traceXZ = create2DTrace(filteredData.map(item => item['Revenue']), filteredData.map(item => item['RevenuePerLawyer']), 'Revenue vs. Revenue Per Lawyer', filteredData.map(item => item['Firm']));  // Pass filteredData firms as text
+            var traceYZ = create2DTrace(lawyers, filteredData.map(item => item['RevenuePerLawyer']), 'Lawyers vs. Revenue Per Lawyer', filteredData.map(item => item['Firm']));  // Pass filteredData firms as text
+
+            // Function to create layouts
+            function createLayout(title, description, xaxis, yaxis, zaxis=null) {
+                var layout = {
+                    autosize: true,
+                    height: window.innerHeight,
+                    width: window.innerWidth,
+                    xaxis: { title: xaxis },
+                    yaxis: { title: yaxis },
+                    title: {
+                        text: title,
+                        font: { size: 24 },
+                        xref: 'paper',
+                        x: 0.5
+                    },
+                    annotations: [
+                        {
+                            xref: 'paper',
+                            yref: 'paper',
+                            x: 0.5,
+                            y: -0.1,
+                            xanchor: 'center',
+                            yanchor: 'top',
+                            text: description,
+                            showarrow: false
+                        }
+                    ]
+                };
+                if (zaxis) {
+                    layout['scene'] = { xaxis: { title: xaxis }, yaxis: { title: yaxis }, zaxis: { title: zaxis } };
                 }
-            },
-            mode: 'markers',
-            name: 'Top 100 Law Firms (Darker color & bigger size = higher Revenue Per Lawyer)',
-            type: 'scatter3d',
-            hovertemplate:
-                '<b>%{text}</b><br>' +
-                'Total Revenue: %{x}<br>' +
-                'Total Lawyers: %{y}<br>' +
-                'Revenue Per Lawyer: %{z}<br>' +
-                '<extra></extra>',  // Hide secondary hover box
-            text: data['Firm']  // Show firm name when a marker is hovered
-        };
+                return layout;
+            }
 
-        var layout = {
-            title: '3D Visualization of Top 100 Law Firms by Revenue',
-            scene: {
-                xaxis: { title: 'Total Revenue' },
-                yaxis: { title: 'Total Lawyers' },
-                zaxis: { title: 'Revenue Per Lawyer' },
-            },
-            autosize: true,  // Automatically size the plot to fit the div
-            height: window.innerHeight,  // Set the height to the height of the browser window
-            width: window.innerWidth  // Set the width to the width of the browser window
-        };
 
-        // Create the data array
-        var plotData = [trace];
+            
+            // Define layouts using the function
+            var layout3D1 = createLayout(
+                '',
+                'The plot shows the relationship between the total revenue, number of lawyers, and profit per partner. The positive slope indicates that as the total revenue and number of lawyers increase, the profit per partner also tends to increase. However, the R-squared value of 0.186 suggests that only about 18.6% of the variability in the profit per partner can be explained by the total revenue and number of lawyers. This implies that other factors not included in this plot could also significantly impact the profit per partner.',
+                'Total Revenue',
+                'Total Lawyers',
+                'Profit Per Partner'
+            );
 
-        // Plot the data
-        Plotly.newPlot('myDiv', plotData, layout);
+            var layout3D2 = createLayout(
+                '',
+                'This plot shows the relationship between revenue, revenue per lawyer, and profit per partner.',
+                'Total Revenue',
+                'Revenue Per Lawyer',
+                'Profit Per Partner'
+            );
 
-        // Resize the plot when the window size changes
-        window.onresize = function() {
+            var layout2D1 = createLayout(
+                '',
+                'This plot shows the relationship between revenue and profit per partner.',
+                'Revenue',
+                'Profit Per Partner'
+            );
+
+            var layout2D2 = createLayout(
+                '',
+                'This plot shows the relationship between revenue per lawyer and profit per partner.',
+                'Revenue Per Lawyer',
+                'Profit Per Partner'
+            );
+
+            var layout3D = createLayout(
+                '',
+                'This plot shows the relationship between revenue, number of lawyers, and revenue per lawyer.',
+                'Total Revenue',
+                'Total Lawyers',
+                'Revenue Per Lawyer'
+            );
+
+            var layoutXZ = createLayout(
+                '',
+                'This plot shows the relationship between revenue and revenue per lawyer.',
+                'Revenue',
+                'Revenue Per Lawyer'
+            );
+
+            var layoutYZ = createLayout(
+                '',
+                'This plot shows the relationship between number of lawyers and revenue per lawyer.',
+                'Total Lawyers',
+                'Revenue Per Lawyer'
+            );
+
+            // Group traces
+            var traces = {
+                "3d1": {data: [trace3d1], layout: layout3D1},
+                "3d2": {data: [trace3d2], layout: layout3D2},
+                "2d1": {data: [trace2d1], layout: layout2D1},
+                "2d2": {data: [trace2d2], layout: layout2D2},
+                "3d": {data: [trace3d], layout: layout3D},
+                "rev": {data: [traceXZ], layout: layoutXZ},
+                "law": {data: [traceYZ], layout: layoutYZ}
+            };
+
+
+            // Plot the data
+            Plotly.newPlot('myDiv', traces["3d1"].data, traces["3d1"].layout);
             Plotly.relayout('myDiv', {
                 'width': window.innerWidth,
-                'height': window.innerHeight
+                'height': window.innerHeight - 240
             });
+
+            // Dropdown event
+            selectDropdown = document.getElementById("selectButton");
+            selectDropdown.addEventListener('change', function() {
+                var selectedOption = selectDropdown.options[selectDropdown.selectedIndex].value;
+
+                // Initialize the title and description
+                let title = "The Triad of Law Firm Prosperity: Revenue, Lawyers, and Profit Per Partner";
+                let description = "This plot shows the relationship between revenue, number of lawyers, and profit per partner.";
+
+                switch(selectedOption) {
+                    case "3d1":
+                        title = "The Triad of Law Firm Prosperity: Revenue, Lawyers, and Profit Per Partner";
+                        description = "This plot shows the relationship between revenue, number of lawyers, and profit per partner. It offers a fascinating glimpse into the intricate dynamics of a law firm's financial health. It showcases the interplay between a firm's total revenue, the size of its legal team, and the profit reaped by each partner. While a bigger team and greater revenue might intuitively seem to promise higher profits, the reality, as depicted by this plot, is a bit more complex. Other factors, possibly such as the firm's operational efficiency, geographical location, or specialization, might also be influencing the profit per partner.";
+                        break;
+                    case "3d2":
+                        title = "The Power of Individual Performance: Revenue, Revenue Per Lawyer, and Profit Per Partner";
+                        description = "This plot shows the relationship between revenue, revenue per lawyer, and profit per partner. It delves into the heart of what it means to run a profitable law firm. It beautifully illustrates the significant impact of a lawyer's individual contribution (revenue per lawyer) on the overall profit per partner. This plot underscores the value of efficiency and effectiveness in a lawyer's work, as these traits appear to be key drivers of a firm's profitability.";
+                        break;
+                    case "2d1":
+                        title = "The Balance of Wealth: Total Revenue vs. Profit Per Partner";
+                        description = "This plot shows the relationship between total revenue and profit per partner. It highlights the tug-of-war between total revenue and profit per partner in a law firm. While more revenue is generally a good thing, it doesn't always directly translate into higher profits per partner. This implies the existence of other factors such as cost management and operational efficiency that can play a major role in shaping a firm's profitability.";
+                        break;
+                    case "2d2":
+                        title = "The Essence of Efficiency: Revenue Per Lawyer vs. Profit Per Partner";
+                        description = "This plot shows the relationship between revenue per lawyer and profit per partner. It underscores the power of individual performance within a law firm. It shows that when lawyers are able to generate more revenue individually, the firm's partners reap the benefits through higher profits. This suggests that strategies focused on enhancing individual performance could be highly effective in boosting a firm's profitability.";
+                        break;
+                    case "3d":
+                        title = "The Dynamics of Law Firm Growth: Revenue, Lawyers, and Revenue Per Lawyer";
+                        description = "This plot shows the relationship between total revenue, number of lawyers, and revenue per lawyer. It  reveals the delicate balance a law firm must maintain between its size, total revenue, and the revenue generated by each lawyer. It suggests that simply increasing the number of lawyers may not always result in higher revenue per lawyer, hinting at the challenges of scaling a law firm.";
+                        break;
+                    case "rev":
+                        title = "The Tale of Overall and Individual Performance: Total Revenue vs. Revenue Per Lawyer";
+                        description = "This plot shows the relationship between total revenue and revenue per lawyer. It throws light on the dynamics between a firm's total revenue and the revenue generated by each lawyer. It suggests that while higher total revenue is associated with higher revenue per lawyer, the relationship is not very strong. This could imply that other factors, such as the quality of the firm's client base or the efficiency of its operations, might be playing a crucial role.";
+                        break;
+                    case "law":
+                        title = "The Challenge of Expansion: Number of Lawyers vs. Revenue Per Lawyer";
+                        description = "This plot shows the relationship between number of lawyers and revenue per lawyer. It tells a tale of caution for law firms aiming for rapid expansion. It shows that simply increasing the number of lawyers does not always lead to a proportional increase in revenue per lawyer. This could reflect the challenges of maintaining operational efficiency and service quality as a firm grows in size.";
+                        break;
+                }
+
+                // Update the title and description
+                document.getElementById("plotTitle").innerText = title;
+                document.getElementById("plotDescription").innerText = description;
+
+                // Plot the data
+                Plotly.react('myDiv', traces[selectedOption].data, traces[selectedOption].layout);
+                Plotly.relayout('myDiv', {
+                    'width': window.innerWidth,
+                    'height': window.innerHeight - 240
+                });
+
+            });
+
+            // Resize the plot when the window size changes
+            window.onresize = function() {
+                Plotly.relayout('myDiv', {
+                    'width': window.innerWidth,
+                    'height': window.innerHeight - 240
+                });
+            }
         };
+
+        // Dropdown event to choose data
+        var selectData = document.getElementById("selectData");
+        selectData.addEventListener('change', function() {
+            var selectedData = selectData.options[selectData.selectedIndex].value;
+            var n;
+            switch(selectedData) {
+                case "top10":
+                    n = 10;
+                    break;
+                case "top25":
+                    n = 25;
+                    break;
+                case "top50":
+                    n = 50;
+                    break;
+                case "bottom10":
+                    n = -10;
+                    break;
+                case "bottom25":
+                    n = -25;
+                    break;
+                case "bottom50":
+                    n = -50;
+                    break;
+                default:
+                    n = currentData.length;
+                    break;
+            }
+            // Sort data by revenue and take top or bottom n
+            currentData = currentData.sort((a, b) => b['Revenue'] - a['Revenue']);
+            if(n < 0) {
+                currentData = currentData.slice(n);
+            } else {
+                currentData = currentData.slice(0, n);
+            }
+            originalData = currentData;  // Update originalData
+            // Update plot
+            createPlots(currentData);
+        });
+
+        // Initialize plot
+        createPlots(currentData);
+
+        // Log out window size
+        console.log("Window width: ", window.innerWidth);
+        console.log("Window height: ", window.innerHeight);
+
+        // Search bar event listener
+        var searchBar = document.getElementById("searchBar");
+        searchBar.addEventListener('input', function() {
+            var searchText = searchBar.value.toLowerCase();  // Get the search text
+
+            // Update plot by re-running createPlots with the filtered data
+            createPlots(originalData, searchText);
+        });
+
+
+
     });
 </script>
-
-</body>
-</html>
