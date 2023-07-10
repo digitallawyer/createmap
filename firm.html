@@ -41,7 +41,7 @@
                             <option value="rev">2D Scatter: Revenue vs. Revenue Per Lawyer</option>
                             <option value="law">2D Scatter: Lawyers vs. Revenue Per Lawyer</option>
                     </select>
-                    <input type="text" id="searchBar" class="form-control w-auto me-2 d-none" placeholder="Search for a firm">
+                    <input type="text" id="searchBar" class="form-control w-auto me-2" placeholder="Search for a firm">
                 </div>
                 <div id="myDiv" class="mt-2"></div>
 
@@ -104,7 +104,7 @@ fetch('firms_data_ppp.json')
                         color: colorAttribute,  // Use colorAttribute here
                         colorscale:  [[0, 'lightblue'], [0.999, 'navy'], [1, 'purple']],
                         opacity: 0.8,
-                        size: color,
+                        size: color.map(val => Math.max(val, 0.25)),
                         sizemode: 'diameter',
                         sizeref: 0.01,
                         colorbar: {
