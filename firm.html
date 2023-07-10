@@ -22,6 +22,15 @@
                 </div>
 
                 <div id="dropdowns" class="d-flex justify-content-start">
+                    <select id="selectData" class="form-select w-auto me-2">
+                            <option value="all">All Firms</option>
+                            <option value="top10">Top 10 Firms</option>
+                            <option value="top25">Top 25 Firms</option>
+                            <option value="top50">Top 50 Firms</option>
+                            <option value="bottom10">Bottom 10 Firms</option>
+                            <option value="bottom25">Bottom 25 Firms</option>
+                            <option value="bottom50">Bottom 50 Firms</option>
+                    </select>
                     <select id="selectButton" class="form-select w-auto me-2">
                             <option value="3d1">3D Scatter: Revenue vs. Lawyers vs. Profit Per Partner</option>
                             <option value="3d2">3D Scatter: Revenue vs. Revenue Per Lawyer vs. Profit Per Partner</option>
@@ -32,16 +41,7 @@
                             <option value="rev">2D Scatter: Revenue vs. Revenue Per Lawyer</option>
                             <option value="law">2D Scatter: Lawyers vs. Revenue Per Lawyer</option>
                     </select>
-                    <select id="selectData" class="form-select w-auto me-2">
-                            <option value="all">All Firms</option>
-                            <option value="top10">Top 10 Firms</option>
-                            <option value="top25">Top 25 Firms</option>
-                            <option value="top50">Top 50 Firms</option>
-                            <option value="bottom10">Bottom 10 Firms</option>
-                            <option value="bottom25">Bottom 25 Firms</option>
-                            <option value="bottom50">Bottom 50 Firms</option>
-                    </select>
-                    <input type="text" id="searchBar" class="form-control w-auto me-2" placeholder="Search for a firm">
+                    <input type="text" id="searchBar" class="form-control w-auto me-2 d-none" placeholder="Search for a firm">
                 </div>
                 <div id="myDiv" class="mt-2"></div>
 
@@ -58,16 +58,41 @@ fetch('firms_data_ppp.json')
         var currentData = data;
         var originalData = data;
 
+        var searchText = '';
 
  
         // Function to create plots
         function createPlots(filteredData, searchText) {
             // Compute color attribute based on whether firm name includes the search text
 
-            var colorAttribute = filteredData.map(item => 
-                    (searchText === '' || !item['Firm'].toLowerCase().includes(searchText)) ? 'blue' : 'orange'
-                );
 
+
+            // Convert 'Lawyers' field to a number
+            var lawyers = filteredData.map(item => Number(item['Lawyers'].replace(/,/g, '')));
+
+            // Use filteredData instead of data
+            var minRevPerLawyer = 95000;
+            var maxRevPerLawyer = 3860000;
+            var normalizedRevPerLawyer = filteredData.map(item => (item['RevenuePerLawyer'] - minRevPerLawyer) / (maxRevPerLawyer - minRevPerLawyer));
+
+            // Normalize "Profit Per Partner" and "RevenuePerLawyer" with zero check
+            var minProfitPerPartner = Math.min(...filteredData.map(item => item['ProfitPerPartner']));
+            var maxProfitPerPartner = Math.max(...filteredData.map(item => item['ProfitPerPartner']));
+            var normalizedProfitPerPartner = filteredData.map(item => maxProfitPerPartner !== minProfitPerPartner ? (item['ProfitPerPartner'] - minProfitPerPartner) / (maxProfitPerPartner - minProfitPerPartner) : 0);
+            console.log('minProfitPerPartner:', minProfitPerPartner);
+            console.log('maxProfitPerPartner:', maxProfitPerPartner);
+            console.log('normalizedProfitPerPartner:', normalizedProfitPerPartner);
+            // Compute color attribute based on whether firm name includes the search text
+            var colorAttribute = filteredData.map((item, i) => {
+                // If the firm name includes the search text, return 1 (highest value, corresponding to orange color)
+                if (searchText !== '' && item['Firm'].toLowerCase().includes(searchText)) {
+                    return 1;
+                }
+                // Otherwise, return the normalized "Profit Per Partner" value to maintain the gradient
+                else {
+                    return normalizedProfitPerPartner[i];
+                }
+            });
 
            // Function to create 3D traces
             function create3DTrace(x, y, z, color, name, text) {
@@ -77,7 +102,7 @@ fetch('firms_data_ppp.json')
                     z: z,
                     marker: {
                         color: colorAttribute,  // Use colorAttribute here
-                        colorscale: [[0, 'lightblue'], [1, 'navy']],
+                        colorscale:  [[0, 'lightblue'], [0.999, 'navy'], [1, 'purple']],
                         opacity: 0.8,
                         size: color,
                         sizemode: 'diameter',
@@ -106,7 +131,7 @@ fetch('firms_data_ppp.json')
                     x: x,
                     y: y,
                     mode: 'markers',
-                    marker: { size: 15, color: colorAttribute },
+                    marker: { size: 15, color: 'navy' },
                     type: 'scatter',
                     name: 'Top 100 Law Firms: ' + name,
                     hovertemplate: '<b>%{text}</b><br>' +
@@ -116,19 +141,6 @@ fetch('firms_data_ppp.json')
                     text: text  // Use text parameter here
                 };
             }
-
-            // Convert 'Lawyers' field to a number
-            var lawyers = filteredData.map(item => Number(item['Lawyers'].replace(/,/g, '')));
-
-            // Use filteredData instead of data
-            var minRevPerLawyer = 95000;
-            var maxRevPerLawyer = 3860000;
-            var normalizedRevPerLawyer = filteredData.map(item => (item['RevenuePerLawyer'] - minRevPerLawyer) / (maxRevPerLawyer - minRevPerLawyer));
-
-            // Normalize "Profit Per Partner" and "RevenuePerLawyer" with zero check
-            var minProfitPerPartner = Math.min(...filteredData.map(item => item['ProfitPerPartner']));
-            var maxProfitPerPartner = Math.max(...filteredData.map(item => item['ProfitPerPartner']));
-            var normalizedProfitPerPartner = filteredData.map(item => maxProfitPerPartner !== minProfitPerPartner ? (item['ProfitPerPartner'] - minProfitPerPartner) / (maxProfitPerPartner - minProfitPerPartner) : 0);
 
             // Create the traces and layout for each plot
             var trace3d1 = create3DTrace(filteredData.map(item => item['Revenue']), lawyers, filteredData.map(item => item['ProfitPerPartner']), normalizedProfitPerPartner, 'Profit Per Partner', filteredData.map(item => item['Firm']));  // Pass filteredData firms as text
@@ -179,21 +191,21 @@ fetch('firms_data_ppp.json')
             // Define layouts using the function
             var layout3D1 = createLayout(
                 '',
-                'The plot shows the relationship between the total revenue, number of lawyers, and profit per partner. The positive slope indicates that as the total revenue and number of lawyers increase, the profit per partner also tends to increase. However, the R-squared value of 0.186 suggests that only about 18.6% of the variability in the profit per partner can be explained by the total revenue and number of lawyers. This implies that other factors not included in this plot could also significantly impact the profit per partner.',
+                '',
                 'Total Revenue',
                 'Total Lawyers',
                 'Profit Per Partner'
             );
             var layout2D3 = createLayout(
                 '',
-                'This plot shows the relationship between total revenue and the number of lawyers in a firm.',
+                '',
                 'Revenue',
                 'Number of Lawyers'
             );
 
             var layout3D2 = createLayout(
                 '',
-                'This plot shows the relationship between revenue, revenue per lawyer, and profit per partner.',
+                '',
                 'Total Revenue',
                 'Revenue Per Lawyer',
                 'Profit Per Partner'
@@ -201,21 +213,21 @@ fetch('firms_data_ppp.json')
 
             var layout2D1 = createLayout(
                 '',
-                'This plot shows the relationship between revenue and profit per partner.',
+                '',
                 'Revenue',
                 'Profit Per Partner'
             );
 
             var layout2D2 = createLayout(
                 '',
-                'This plot shows the relationship between revenue per lawyer and profit per partner.',
+                '',
                 'Revenue Per Lawyer',
                 'Profit Per Partner'
             );
 
             var layout3D = createLayout(
                 '',
-                'This plot shows the relationship between revenue, number of lawyers, and revenue per lawyer.',
+                '',
                 'Total Revenue',
                 'Total Lawyers',
                 'Revenue Per Lawyer'
@@ -223,14 +235,14 @@ fetch('firms_data_ppp.json')
 
             var layoutXZ = createLayout(
                 '',
-                'This plot shows the relationship between revenue and revenue per lawyer.',
+                '',
                 'Revenue',
                 'Revenue Per Lawyer'
             );
 
             var layoutYZ = createLayout(
                 '',
-                'This plot shows the relationship between number of lawyers and revenue per lawyer.',
+                '',
                 'Total Lawyers',
                 'Revenue Per Lawyer'
             );
@@ -256,9 +268,12 @@ fetch('firms_data_ppp.json')
             });
 
             // Dropdown event
+            var currentPlotType = "3d1";
+
             selectDropdown = document.getElementById("selectButton");
             selectDropdown.addEventListener('change', function() {
                 var selectedOption = selectDropdown.options[selectDropdown.selectedIndex].value;
+                currentPlotType = selectedOption; 
 
                 // Reset the search bar
                 searchBar.value = "";
@@ -355,19 +370,18 @@ fetch('firms_data_ppp.json')
                     n = -50;
                     break;
                 default:
-                    n = currentData.length;
+                    n = originalData.length;
                     break;
             }
             // Sort data by revenue and take top or bottom n
-            currentData = currentData.sort((a, b) => b['Revenue'] - a['Revenue']);
+            var sortedData = [...originalData].sort((a, b) => b['Revenue'] - a['Revenue']);
             if(n < 0) {
-                currentData = currentData.slice(n);
+                currentData = sortedData.slice(n);
             } else {
-                currentData = currentData.slice(0, n);
+                currentData = sortedData.slice(0, n);
             }
-            originalData = currentData;  // Update originalData
             // Update plot
-            createPlots(currentData);
+            createPlots(currentData, searchText);
         });
 
         // Initialize plot
